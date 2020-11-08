@@ -1,0 +1,237 @@
+---
+title: "Exploring and Predicting NFL Games Using the Bradley-Terry model"
+author: "Elina Choi, Shan Lu, and Steven Moen"
+output: 
+  rmarkdown::html_document:
+    number_sections: false
+    toc: true
+    toc_depth: 3
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE)
+```
+
+# Summary
+
+[ADD A SUMAMRY]
+
+Our results show X, Y, Z. We aim to work more in this area.
+
+# Introduction
+
+It might be fair to call gridiron football, sometimes called "American" football, an obsession in the United States, at all levels of play - high school, college, and professional. The professional ranks generate eye-popping revenue figures - in 2018, they generated $16 billion [ADD PLEDGESPORTS CITATION]. This revenue figure doesn't fully encapsulate the national phenomenon that is American football. As a native Texan, it's hard to explain how big a deal it is in everyday life. Indeed, many of my fondest memories in high school and college revolved around the sport, even though I never played it. I played in the marching band in high school, and even after the games, there was always a buzz about how Texas or Texas A&M were doing, and how the BCS rankings were shaping up. It's hard not to feel genuine joy or sadness when your team wins - whether it be jumping for joy as Rice beats Purdue in an upset victory, or helplessly watching Mississippi State and a young Dak Prescott win handily in the Liberty Bowl. Football encapsulates a gamut of emotions that would rival those from even the greatest Shakespeare play within the 60 minutes on the game clock, and with the ball spotted between the hash marks on the gridiron. As statisticians, we seek to better understand this game that, until now, has been quite enigmatic.
+
+There has been an enormous movement in recent years towards improved sports analytics - how to incorporate modern data analysis tools to better understand outcomes of games and to help teams improve their likelihood of a win [ADD CITATION]. In addition to understanding what happens on the field and how to improve results from the perspective of a coach or player, there is also a growing legal sports betting market in many states. Indeed, there is legal sports betting in 19 states and the District of Columbia as of November 3rd, 2020 [ADD ESPN CITATION]. While this industry was shrouded in secrecy in the past, it is now becoming more and more a (legitimate) part of game day.
+
+Predicting and analyzing professional American football games played by the National Football League (NFL) is a tricky business compared to the other "Big 4" sports leagues, namely, the National Basketball Association (NBA), the National Hockey League (NHL), and Major League Baseball (MLB). There are four reasons that make this the case. 
+
+- First off, the NFL only has 16 regular-season games per year, which is significantly less than the NHL and NBA's 82 and the MLB's 162. Clearly, per the sample size alone, predicting NFL games will be much more difficult since any standard error will be larger, other things equal. [ADD TABLE SUMMARIZING THIS?] Moreover, there are more NFL teams (32) compared to 30 teams in the other leagues. The scarce levels of data within a season make direct win-loss comparisons difficult. A team in a weak division (such as the NFC East in 2020, with 8 wins total after Week 8 in the NFL amongst the four teams in the division) could hardly be compared fairly to a division such as the AFC North, with 19 wins total in Week 8 for the 4 teams in the division as the 2020 NFL season approaches its midway point [ADD FOOTBALL REFERENCE CITATION]. 
+
+- Secondly, one might instead point to the margin of victory as a means of properly sorting teams. Again, this is misleading - the same considerations mentioned above still apply. A mediocre team playing a bad team may look better than a great team playing a good team. Also, from 2002 through midway through the 2014 season, about 64% of NFL games were within two touchdowns [ADD CITATION FROM BLOG / ADD A GRAPH?], and there is a very real problem of "garbage time", where a team that is ahead may modify their offensive strategy to chew clock and increase the chance of a victory instead of scoring more points, because the latter poses a greater risk of a turnover or a fumble [ADD PFF CITATION]. To be sure, it seems quite clear that a team plays to win, not to win by a certain margin in the NFL, as this is what matters for making the playoffs. As such, margin of victory is also deceptive.
+
+- Third, one might then look to the microfoundations of the NFL game, but the problem there is that the probabilities needed to understand the game are highly conditional and therefore intractable [CITE?]. For example, evaluating quarterbacks Deshaun Watson against Patrick Mahomes requires a lot of simplifying assumptions since they play very different styles of football under different head coaches with a different supporting cast of skill position players and offensive linemen.
+
+- Fourth, there is also the problem of prior year data. To borrow Vilfredo Pareto's phrase, there is a lot of "circulation of the elite" among NFL teams - a great team may find themselves in a cellar quickly, and vice-versa. The NFL draft, with its highest picks and therefore best players awarded to the teams with the worst records, a team that was awful one year can find its fortunes reversed the next. [CITE]. Also, given the high injury risks associated with football, players tend to have shorter careers [CITE] and can have a promising season cut short or hobbled with an injury.
+
+One might look at these grim realities and give up - how is it possible to understand America's game? There is hope, and it comes in the form of the Bradley-Terry model.
+
+## Bradley-Terry Model
+
+We will do thing X, Y, Z with the B-T model. 
+
+# Results 
+
+These are the results.
+
+## Load data
+```{r}
+# Load the library
+library(BradleyTerry2)
+
+# Modified this location
+# setwd("/Users/stevenmoen/Documents/GitHub/PhD_stat_codes/Fall_2020/STAT_992/Project/NFL_data")
+dat= read.table('/Users/stevenmoen/Documents/GitHub/PhD_stat_codes/Fall_2020/STAT_992/Project/NFL_data/games.csv', sep=',', header=T,  row.names = NULL, fill=T, quote='', stringsAsFactors = FALSE)
+
+# Look at the data
+# dat
+
+#dat <- readr::read_csv("http://www.habitatring.com/games.csv")
+## Data begins with the 2006 NFL season. Does not include preseason.
+dat = dat[dat$season>=2006,]
+# head(dat)
+## Delete games with missing entries in game results, 16 games in season 2020 were deleted
+dat <-  data.frame(dat[complete.cases(dat[,8:11]),])
+
+# STM Edits <- Go ahead and delete all of 2020 as well
+# dat = dat[dat$season<2020,]
+# tail(dat, 40)
+
+# Also, let's get rid of all playoff games
+# dat = dat[dat$game_type=="REG",]
+
+## proportion of ties
+print(mean(dat$result==0) ) 
+## Delete ties
+dat <- dat[dat$result!=0,]
+## number of games per season
+print(table(dat$season))
+
+
+```
+
+Ok, so we should have a regular season dataset with games from 2006 through 2019, inclusive.
+
+## Check temporal correlation
+```{r}
+### fit BT by season ###
+# BT_score is a matrix storing BT scores for all seasons
+BT_score = matrix(NA, nrow = length(unique(dat$home_team)), ncol=length(unique(dat$season)))
+# Sore the team names
+rownames(BT_score)=sort(unique(dat$home_team))
+# Organize the seasons
+colnames(BT_score)=paste0('season',min(dat$season): max(dat$season))
+
+# Let's examine the matrix
+BT_score
+
+# team ARI is used as control
+BT_score['ARI',] = 0
+
+# Loop through for all seasons in the dataframe
+for (i in min(dat$season): max(dat$season)){
+  # Subset the dataframe for only one season
+  dat_season=dat[dat$season==i,]
+  # Count a home team win if result is equal to 0
+  home.wins = (dat_season$result>0)*1
+  # print(home.wins)
+  # Assign variables in a different way
+  home.team = factor(dat_season$home_team, levels = unique(c(dat_season$home_team,dat_season$away_team)))
+  away.team = factor(dat_season$away_team, levels = unique(c(dat_season$home_team,dat_season$away_team)))
+  # Create a list of inputs for the model to run
+  football = list(home.team=data.frame(team = home.team, at.home = 1),
+                  away.team=data.frame(team = away.team, at.home = 0))
+  # print(football)
+  # Try running the model
+  mod1 = BTm(outcome = home.wins, player1 = home.team, player2 = away.team,
+             formula = ~ team + at.home, id = "team",data = football, family =binomial(link = "logit"))
+  # Extract the model coefficients
+  coef=mod1$coefficients[1:(length(mod1$coefficients)-1)]
+  # Stores the coefficients in a list
+  BT_score[unlist(lapply(names(coef),function(i){substr(i, 5, nchar(i))})),i-min(dat$season)+1]=coef
+}
+
+# coef
+
+# BT_score
+
+
+# mod1
+
+BT_score = BT_score[complete.cases(BT_score),]
+cormat = cor(BT_score, method='spearman')
+diag(cormat)=NA
+library(reshape2)
+library(ggplot2)
+
+# Reorder the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Spearman\nCorrelation") +
+  theme_minimal()+ # minimal theme
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 8, hjust = 1),
+        axis.text.y = element_text(size = 8))+
+  coord_fixed()
+
+ggheatmap + 
+  geom_text(aes(Var2, Var1, label = round(value,2)), color = "black", size = 2) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(0.6, 0.7),
+    legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                               title.position = "top", title.hjust = 0.5))
+```
+
+## Fit BT model and compare BT model accuracy with spread line accuracy
+```{r}
+#########################################################
+# Subset the data
+season=2007:2019
+test_acc= matrix(0, nrow=length(season), ncol=3)
+
+# Loop through
+for (i in season){
+  dat_train=dat[dat$season==i-1,]
+  home.wins = 1*(dat_train$home_score> dat_train$away_score)
+  # Assign variables in a different way
+  home.team = factor(dat_train$home_team, levels = unique(c(dat_train$home_team,dat_train$away_team)))
+  away.team = factor(dat_train$away_team, levels = unique(c(dat_train$home_team,dat_train$away_team)))
+  # Create a list of inputs for the model to run
+  football_train = list(home.team=data.frame(team = home.team, at.home = 1),
+                  away.team=data.frame(team = away.team, at.home = 0))
+  # football_train = list(home.team = data.frame(team = dat_train$home_team, at.home = 1), 
+                              # away.team = data.frame(team = dat_train$away_team, at.home = 0))
+  mod1 = BTm(outcome = home.wins, player1 = home.team, player2 = away.team,
+             formula = ~ team + at.home , id = "team", data = football_train, family = binomial(link = "logit"))
+  # Test the model
+  dat_test=dat[dat$season==i,]
+  # Assign variables in a different way
+  home.team = factor(dat_test$home_team, levels = unique(c(dat_test$home_team,dat_test$away_team)))
+  away.team = factor(dat_test$away_team, levels = unique(c(dat_test$home_team,dat_test$away_team)))
+  # Create a list of inputs for the model to run
+  football_test = list(home.team=data.frame(team = home.team, at.home = 1),
+                  away.team=data.frame(team = away.team, at.home = 0))
+  # football_test = list(home.team=data.frame(team = dat_test$home_team, at.home = 1), 
+                             # away.team=data.frame(team = dat_test$away_team, at.home = 0))
+                             
+  test_acc[i-2006,]=c(
+  mean((predict(mod1, newdata=football_test)>0)*1 == (dat_test$result>0)*1),
+  mean((dat_test$spread_line>0)*1 == (dat_test$result>0)*1),
+  sum(!(unique(c(dat_test$home_team, dat_test$away_team))%in%unique(c(dat_train$home_team, dat_train$away_team)))
+  ))
+}
+
+dat_test$result
+football_test[[1]][8,]
+predict(mod1, newdata = football_test[[8]])
+
+# Problem solving
+football_test[[1]][8,]
+football_test[[2]][8,]
+
+# football_train[[2]]$team == "WAS"
+
+# test_acc
+
+colnames(test_acc)=c('BT accuracy', 'spread line accuracy', 'num new teams')
+rownames(test_acc)=paste0('season_', season)
+test_acc
+
+```
+* fit BT with ties.
+* fit the model by date instead of by season.
+* take more variables into account.
+* extend BT to account for temporal dynamic.
+
+
+# Discussion
