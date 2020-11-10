@@ -3,9 +3,9 @@ title: "Exploring and Predicting NFL Games Using the Bradley-Terry model"
 author: "Elina Choi, Shan Lu, and Steven Moen"
 output: 
   rmarkdown::html_document:
-    number_sections: false
+    number_sections: true
     toc: true
-    toc_depth: 3
+    toc_depth: 1
 bibliography: stat_992_project.bib
 ---
 
@@ -13,6 +13,10 @@ bibliography: stat_992_project.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache=TRUE,
                       message=FALSE, warning=FALSE)
+library(BradleyTerry2)
+library(ggplot2)
+library(reshape2)
+library(tidyr)
 ```
 
 # Summary
@@ -41,79 +45,66 @@ One might look at these grim realities and give up - how is it possible to under
 
 ## Bradley-Terry Model
 
-We will do thing X, Y, Z with the B-T model. 
+
+The Bradley-Terry model [@bradley1952rank] is a probabilistic model for pairwise comparison. The probability of event "team i beats team j" is formulated as 
+\[\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)), \]
+where $\lambda_i=\beta_{i0}+\sum_{r}x_{ir}\beta_{r}$ and $\lambda_j=\beta_{j0}+\sum_{r}x_{jr}\beta_{r}$. 
+
+The parameter $\beta_{i0}$ quantifies the ability of team $i$.  If  $\beta_{i0}> \beta_{j0}$, then team $i$ has higher chances of beating team $j$. $\{x_{ir}\}_{r}$ are team specific  variables that may influence game results. For example, if we set $x_{i1}=1_{\{\text{team }i \text{ is at home}\}}$, then $\beta_{1}$ expresses home team advantage. The model is estimated through maximum likelihood, and is implemented with R package [BradleyTerry2](https://github.com/hturner/BradleyTerry2).
 
 # Results 
 
-These are the results.
+We have NFL data from season 2006 to season 2019, downloaded from Github folder [Data source](https://github.com/leesharpe/nfldata/blob/master/DATASETS.md#games). The data set contains detailed information about game date time, location, weather, stadium type, coach, game type, team score etc, but for exploratory purpose, we will model the game result using only team name and home/away information.
 
 ## Load data
+
 ```{r}
-# Load the library
-library(BradleyTerry2)
+dat = read.table('games.csv', sep=',', header=T,  row.names = NULL, fill=T, quote='', stringsAsFactors = FALSE)
+dat = dat[dat$season>=2006 &dat$season<2020,]
 
-# Modified this location
-# setwd("/Users/stevenmoen/Documents/GitHub/PhD_stat_codes/Fall_2020/STAT_992/Project/NFL_data")
-dat= read.table('/Users/stevenmoen/Documents/GitHub/PhD_stat_codes/Fall_2020/STAT_992/Project/NFL_data/games.csv', sep=',', header=T,  row.names = NULL, fill=T, quote='', stringsAsFactors = FALSE)
-
-# Look at the data
-# dat
-
-#dat <- readr::read_csv("http://www.habitatring.com/games.csv")
-## Data begins with the 2006 NFL season. Does not include preseason.
-dat = dat[dat$season>=2006,]
-# head(dat)
-## Delete games with missing entries in game results, 16 games in season 2020 were deleted
-dat <-  data.frame(dat[complete.cases(dat[,8:11]),])
-
-# STM Edits <- Go ahead and delete all of 2020 as well
-# dat = dat[dat$season<2020,]
-# tail(dat, 40)
-
-# Also, let's get rid of all playoff games
-# dat = dat[dat$game_type=="REG",]
-
-## proportion of ties
-print(mean(dat$result==0) ) 
-## Delete ties
+# remove playoff games
+dat = dat[dat$game_type=="REG",]
+# remove games with ties
 dat <- dat[dat$result!=0,]
+# Teams change name in season 2016 and 2017. We use their old names for consistent comparison.
+dat$home_team[dat$home_team=="LA"]="STL"
+dat$away_team[dat$away_team=="LA"]="STL"
+dat$home_team[dat$home_team=="LAC"]="SD"
+dat$away_team[dat$away_team=="LAC"]="SD"
 ## number of games per season
 print(table(dat$season))
-
-
 ```
 
-Ok, so we should have a regular season dataset with games from 2006 through 2019, inclusive.
-
 ## Check temporal correlation
-```{r}
+
+The data comes as a time series. We expect team's "ability" varies through time, because of changes in players, coaches, funding, etc. It is better to train a predictive model with more recent data, other than using all the historical data. A common technique to inspect the temporal structure is through auto-correlation. For each season, we fit a Bradley-Terry model for each season, and  compute the Spearman correlation of the  estimated team score between each pair of seasons. As the correlation decays fast through years, with a 
+median value of 0.35 between consecutive years, we decide to train the Bradley-Terry model using only data from the previous season.
+
+```{r,fig.cap = "Figure 1: Spearman correlation of the team Bradley-Terry score between each pair of seasons", fig.align='center'}
 ### fit BT by season ###
 # BT_score is a matrix storing BT scores for all seasons
+
 BT_score = matrix(NA, nrow = length(unique(dat$home_team)), ncol=length(unique(dat$season)))
-# Sore the team names
+# Sort the team names
 rownames(BT_score)=sort(unique(dat$home_team))
 # Organize the seasons
 colnames(BT_score)=paste0('season',min(dat$season): max(dat$season))
 
-# Let's examine the matrix
-BT_score
 
 # team ARI is used as control
 BT_score['ARI',] = 0
 
-# Loop through for all seasons in the dataframe
+# Loop through for all seasons in the data frame
 for (i in min(dat$season): max(dat$season)){
-  # Subset the dataframe for only one season
+  # Subset the data frame for only one season
   dat_season=dat[dat$season==i,]
   # Count a home team win if result is equal to 0
   home.wins = (dat_season$result>0)*1
   # print(home.wins)
   # Assign variables in a different way
-  home.team = factor(dat_season$home_team, levels = unique(c(dat_season$home_team,dat_season$away_team)))
-  away.team = factor(dat_season$away_team, levels = unique(c(dat_season$home_team,dat_season$away_team)))
   # Create a list of inputs for the model to run
-  football = list(home.team=data.frame(team = home.team, at.home = 1),
-                  away.team=data.frame(team = away.team, at.home = 0))
+  football = list(home.team=data.frame(team = dat_season$home_team, at.home = 1),
+                  away.team=data.frame(team = dat_season$away_team, at.home = 0))
   # print(football)
   # Try running the model
   mod1 = BTm(outcome = home.wins, player1 = home.team, player2 = away.team,
@@ -124,18 +115,10 @@ for (i in min(dat$season): max(dat$season)){
   BT_score[unlist(lapply(names(coef),function(i){substr(i, 5, nchar(i))})),i-min(dat$season)+1]=coef
 }
 
-# coef
-
-# BT_score
-
-
-# mod1
 
 BT_score = BT_score[complete.cases(BT_score),]
 cormat = cor(BT_score, method='spearman')
 diag(cormat)=NA
-library(reshape2)
-library(ggplot2)
 
 # Reorder the correlation matrix
 get_upper_tri <- function(cormat){
@@ -173,66 +156,53 @@ ggheatmap +
                                title.position = "top", title.hjust = 0.5))
 ```
 
-## Fit BT model and compare BT model accuracy with spread line accuracy
-```{r}
-#########################################################
-# Subset the data
-season=2007:2019
-test_acc= matrix(0, nrow=length(season), ncol=3)
+## Fit BT model and compare the prediction accuracy with spread line 
 
-# Loop through
+We separate the dataset by season, train the Bradley-Terry model with each season from 2006 through 2018, and test the fitted model using the next season. As shown in figure 2, the  Bradley-Terry model  with an average prediction accuracy of 0.59 is better than a random guess, but performs worse than the spread line with an average accuracy of 0.67.
+
+```{r, fig.cap = "Figure 2: Classification accuracy for Bradley-Terry model and spread line", fig.align='center'}
+
+season = (min(dat$season)+1):max(dat$season)
+# test_acc if a matrix storing testing set classification accuracy of Bradley-Terry model, and spreadline accuracy.
+test_acc = matrix(0, nrow=length(season), ncol=2)
+colnames(test_acc) = c('Bradley_Terry', 'spread_line')
+rownames(test_acc) = paste0('season_', season)
+
 for (i in season){
+  # Training set
   dat_train=dat[dat$season==i-1,]
   home.wins = 1*(dat_train$home_score> dat_train$away_score)
-  # Assign variables in a different way
-  home.team = factor(dat_train$home_team, levels = unique(c(dat_train$home_team,dat_train$away_team)))
-  away.team = factor(dat_train$away_team, levels = unique(c(dat_train$home_team,dat_train$away_team)))
-  # Create a list of inputs for the model to run
-  football_train = list(home.team=data.frame(team = home.team, at.home = 1),
-                  away.team=data.frame(team = away.team, at.home = 0))
-  # football_train = list(home.team = data.frame(team = dat_train$home_team, at.home = 1), 
-                              # away.team = data.frame(team = dat_train$away_team, at.home = 0))
+  football_train = list(home.team=data.frame(team = dat_train$home_team, at.home = 1),
+                  away.team=data.frame(team = dat_train$away_team, at.home = 0))
   mod1 = BTm(outcome = home.wins, player1 = home.team, player2 = away.team,
              formula = ~ team + at.home , id = "team", data = football_train, family = binomial(link = "logit"))
-  # Test the model
+  # Testing set
   dat_test=dat[dat$season==i,]
-  # Assign variables in a different way
-  home.team = factor(dat_test$home_team, levels = unique(c(dat_test$home_team,dat_test$away_team)))
-  away.team = factor(dat_test$away_team, levels = unique(c(dat_test$home_team,dat_test$away_team)))
-  # Create a list of inputs for the model to run
-  football_test = list(home.team=data.frame(team = home.team, at.home = 1),
-                  away.team=data.frame(team = away.team, at.home = 0))
-  # football_test = list(home.team=data.frame(team = dat_test$home_team, at.home = 1), 
-                             # away.team=data.frame(team = dat_test$away_team, at.home = 0))
-                             
-  test_acc[i-2006,]=c(
+  football_test = list(home.team=data.frame(team = dat_test$home_team, at.home = 1),
+                  away.team=data.frame(team = dat_test$away_team, at.home = 0))
+
+  test_acc[i-min(season)+1,]=c(
   mean((predict(mod1, newdata=football_test)>0)*1 == (dat_test$result>0)*1),
-  mean((dat_test$spread_line>0)*1 == (dat_test$result>0)*1),
-  sum(!(unique(c(dat_test$home_team, dat_test$away_team))%in%unique(c(dat_train$home_team, dat_train$away_team)))
-  ))
+  mean((dat_test$spread_line>0)*1 == (dat_test$result>0)*1)
+  )
 }
-
-dat_test$result
-football_test[[1]][8,]
-predict(mod1, newdata = football_test[[8]])
-
-# Problem solving
-football_test[[1]][8,]
-football_test[[2]][8,]
-
-# football_train[[2]]$team == "WAS"
-
-# test_acc
-
-colnames(test_acc)=c('BT accuracy', 'spread line accuracy', 'num new teams')
-rownames(test_acc)=paste0('season_', season)
-test_acc
+# reshape the test_acc to plot
+test_acc_long = gather(data.frame(test_acc, season=rownames(test_acc)), method, accuracy, "Bradley_Terry":"spread_line", factor_key=TRUE)
+test_acc_long$season = as.integer(unlist(lapply(test_acc_long$season, FUN=function(i){substr(i,8,11)})))
+ggplot(test_acc_long, aes(x=season, y=accuracy, color=method)) + theme_bw()+
+    geom_line()+theme(legend.title = element_blank())+ylab('Classification Accuracy')+xlab("Season")
 
 ```
-* fit BT with ties.
-* fit the model by date instead of by season.
-* take more variables into account.
-* extend BT to account for temporal dynamic.
+
+
 
 
 # Discussion
+After exploring the data with a simple version of the Bradley-Terry model, we have a few directions to improve the model:
+
+* Formulate the Bradley-Terry model in a way that can adjust for ties.
+* Train the model in an online fashion, instead of using large batches. 
+* Take more explanatory variables into account.
+* Extend the model to account for temporal dynamic, so that we can train with all the historical data.
+
+# References
