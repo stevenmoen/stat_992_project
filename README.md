@@ -108,7 +108,7 @@ the Bradley-Terry model.
 ## 2.1 Bradley-Terry Model
 
 The Bradley-Terry model (Bradley and Terry 1952) is a probabilistic
-model for pairwise comparison. The probability of event “team i beats
+model for pairwise comparisons. The probability of event “team i beats
 team j” is formulated as
 
 ![equation](https://latex.codecogs.com/gif.latex?%5C%7Bi%20%5Ctext%7B%20beats%20%7D%20j%5C%7D%20%5Csim%20%5Ctext%7B%20Bernoulli%7D%28%5Ctexttt%7Blogit%7D%5E%7B-1%7D%28%5Clambda_i-%5Clambda_j%29%29%2C)
@@ -126,18 +126,15 @@ example, if we set
 ![equation](https://latex.codecogs.com/gif.latex?x_%7Bi1%7D%3D1_%7B%5C%7B%5Ctext%7Bteam%20%7Di%20%5Ctext%7B%20is%20at%20home%7D%5C%7D%7D),
 then ![equation](https://latex.codecogs.com/gif.latex?%5Cbeta_%7B1%7D)
 expresses home team advantage. The model is estimated through maximum
-likelihood, and is implemented with R package
+likelihood, and is implemented with the R package
 [BradleyTerry2](https://github.com/hturner/BradleyTerry2).
 
 # 3 Results
 
-We have NFL data from season 2006 to season 2019, downloaded from Github
+We have NFL data from the 2006 through the 2019 regular seasons, downloaded from Github
 folder [Data
 source](https://github.com/leesharpe/nfldata/blob/master/DATASETS.md#games).
-The data set contains detailed information about game date time,
-location, weather, stadium type, coach, game type, team score etc, but
-for exploratory purpose, we will model the game result using only team
-name and home/away information.
+The data set contains detailed information, including information about game date, game time, location, weather, stadium type, coaches, game type (i.e. playoffs, regular season), team score, etc. However, for our exploratory analysis, we will model the game result using only team name and home/away information.
 
 ## 3.1 Load data
 
@@ -158,16 +155,7 @@ dat$away_team[dat$away_team=="LAC"]="SD"
 
 ## 3.2 Check temporal correlation
 
-The data comes as a time series. We expect team’s “ability” varies
-through time, because of changes in players, coaches, funding, etc. It
-is better to train a predictive model with more recent data, other than
-using all the historical data. A common technique to inspect the
-temporal structure is through auto-correlation. For each season, we fit
-a Bradley-Terry model for each season, and compute the Spearman
-correlation of the estimated team score between each pair of seasons. As
-the correlation decays fast through years, with a median value of 0.35
-between consecutive years, we decide to train the Bradley-Terry model
-using only data from the previous season.
+The data is structured as a time series. We expect that the "ability" of teams varies through time, because of changes in players, coaches, injuries, etc. Therefore, it is better to train a predictive model using more recent data, rather than using all of the historical data. A common technique to inspect the temporal structure is through autocorrelation. For each season, we fit a Bradley-Terry model, and then compute the Spearman correlation of the estimated team score between each pair of seasons. The correlation decays rapidly between years, with a median value of 0.35 between consecutive years, which supports our decision to use a limited amount of historical data for training model. Thus, we have decided to train the Bradley-Terry model using only data from the previous season.
 
 ``` r
 ### fit BT by season ###
@@ -260,11 +248,7 @@ each pair of seasons
 
 ## 3.3 Fit BT model and compare the prediction accuracy with spread line
 
-We separate the dataset by season, train the Bradley-Terry model with
-each season from 2006 through 2018, and test the fitted model using the
-next season. As shown in figure 2, the Bradley-Terry model with an
-average prediction accuracy of 0.59 is better than a random guess, but
-performs worse than the spread line with an average accuracy of 0.67.
+Based on our findings with the Spearman correlation, we separate the dataset by season, train the Bradley-Terry model on each season from 2006 through 2018, and then test the fitted model using the next season's data. As shown in Figure 2, the Bradley-Terry model has an average prediction accuracy of about 0.59, or 59%. While this is certainly better than a random guess, it performs worse than what the spread line would predict with an average accuracy of 0.67 or 67%.
 
 ``` r
 season = (min(dat$season)+1):max(dat$season)
@@ -313,15 +297,12 @@ line
 
 # 4 Discussion
 
-After exploring the data with a simple version of the Bradley-Terry
-model, we have a few directions to improve the model:
+After exploring the data with a simple version of the Bradley-Terry model, we have a few directions to improve the model:
 
-  - Formulate the Bradley-Terry model in a way that can adjust for ties.
-  - Train the model in an online fashion, instead of using large
-    batches.
-  - Take more explanatory variables into account.
-  - Extend the model to account for temporal dynamic, so that we can
-    train with all the historical data.
+  - Formulate the Bradley-Terry model in a way that can adjust for ties. While these ties are not particularly common, it is a way to improve the quality of the forecast.
+  - Train the model in an online fashion, instead of using large batches. 
+  - Take more explanatory variables into account and see if there are areas in which the B-T model does better than the betting odds do.
+  - Extend the model to account for the temporal dynamics so that we can train with all the historical data.
 
 # 5 References
 
