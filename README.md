@@ -12,7 +12,7 @@ by Elina Choi, Shan Lu, and Steven Moen for STAT 992
 
 Gridiron football is an integral part of American culture and life, yet the game has proven challenging to understand and predict for a variety of reasons. As statisticians, we seek to better understand this game and see if we can make more informed predictions about the outcomes using techniques that we have learned in STAT 992, taught at UW-Madison by Professor Karl Rohe in the Fall of 2020.
 
-We first looked at NFL data from the 2006 through 2019 regular seasons and show that the Spearman correlations decay quickly between seasons. Thus, we decidede to only use one season of training data to fit the Bradley-Terry model, which is a standard model for predicting wins or losses for teams in a tournament-style setting. Our results are mixed in that while the predictions are better than mere chance, they are worse than those predictions implied by the spread line seen in sports books. However, the only covariate we included for this initial pass was whether the teams playing were the home or the away team, and as such, adding additional covariates as well as finding ways to incorporate more recent data may improve our prediction quality. Also, using techniques to incorporate more historical data may also improve our prediction quality.
+We first looked at NFL data from the 2006 through 2019 regular seasons and showed that the Spearman correlations decay quickly between seasons. Thus, we decided to use only one season of training data to fit the Bradley-Terry model, which is a standard model for predicting wins or losses for teams in a tournament-style setting. Our results are mixed in that while the predictions are better than mere chance, they are worse than those predictions implied by the spread line seen in sports books. However, the only covariate we included for this initial pass was whether the teams playing were the home or the away team, and as such, adding additional covariates as well as finding ways to incorporate more recent data may improve our prediction quality. Also, using techniques to incorporate more historical data may also improve our prediction quality.
 
 # 2 Introduction
 
@@ -21,16 +21,7 @@ football, an obsession in the United States, at all levels of play -
 high school, college, and professional. The professional ranks generate
 eye-popping revenue figures - in 2018, they generated $16 billion (Ojha
 2020). This revenue figure doesn’t fully encapsulate the national
-phenomenon that is American football. As a native Texan, it’s hard to
-explain how big a deal it is in everyday life. Indeed, many of my
-fondest memories in high school and college revolved around the sport,
-even though I never played it. I played in the marching band in high
-school, and even after the games, there was always a buzz about how
-Texas or Texas A\&M were doing, and how the BCS rankings were shaping
-up. It’s hard not to feel genuine joy or sadness when your team wins -
-whether it be jumping for joy as Rice beats Purdue in an upset victory,
-or helplessly watching Mississippi State and a young Dak Prescott win
-handily in the Liberty Bowl. Football encapsulates a gamut of emotions
+phenomenon that is American football. Football encapsulates a gamut of emotions
 that would rival those from even the greatest Shakespeare play within
 the 60 minutes on the game clock, and with the ball spotted between the
 hash marks on the gridiron. As statisticians, we seek to better
@@ -51,7 +42,7 @@ Predicting and analyzing professional American football games played by
 the National Football League (NFL) is a tricky business compared to the
 other “Big 4” sports leagues, namely, the National Basketball
 Association (NBA), the National Hockey League (NHL), and Major League
-Baseball (MLB). There are four reasons that make this the case.
+Baseball (MLB). There are 4 reasons that make this the case.
 
   - First off, the NFL only has 16 regular-season games per year, which
     is significantly less than the NHL and NBA’s 82 and the MLB’s 162.
@@ -61,9 +52,9 @@ Baseball (MLB). There are four reasons that make this the case.
     teams in the other leagues. The scarce levels of data within a
     season make direct win-loss comparisons difficult. A team in a weak
     division (such as the NFC East in 2020, with 8 wins total after Week
-    8 in the NFL amongst the four teams in the division) could hardly be
-    compared fairly to a division such as the AFC North, with 19 wins
-    total in Week 8 for the 4 teams in the division as the 2020 NFL
+    8 in the NFL amongst the 4 teams in the division) could hardly be
+    compared fairly to a team in a strong division (such as the AFC North, with 19 wins
+    total in Week 8 for the 4 teams in the division) as the 2020 NFL
     season approaches its midway point.
 
   - Secondly, one might instead point to the margin of victory as a
@@ -155,7 +146,7 @@ dat$away_team[dat$away_team=="LAC"]="SD"
 
 ## 3.2 Check temporal correlation
 
-The data is structured as a time series. We expect that the "ability" of teams varies through time, because of changes in players, coaches, injuries, etc. Therefore, it is better to train a predictive model using more recent data, rather than using all of the historical data. A common technique to inspect the temporal structure is through autocorrelation. For each season, we fit a Bradley-Terry model, and then compute the Spearman correlation of the estimated team score between each pair of seasons. The correlation decays rapidly between years, with a median value of 0.35 between consecutive years, which supports our decision to use a limited amount of historical data for training model. Thus, we have decided to train the Bradley-Terry model using only data from the previous season.
+The data is structured as a time series. We expect that the "ability" of teams varies through time, because of changes in players, coaches, injuries, etc. Therefore, it is better to train a predictive model using more recent data, rather than using all of the historical data. A common technique to inspect the temporal structure is through autocorrelation. For each season, we fit a Bradley-Terry model, and then compute the Spearman correlation of the estimated team score between each pair of seasons. The correlation decays rapidly between years, with a median value of 0.35 between consecutive years, which supports our decision to use a limited amount of historical data for the training model. Thus, we have decided to train the Bradley-Terry model using only data from the previous season.
 
 ``` r
 ### fit BT by season ###
@@ -248,7 +239,7 @@ each pair of seasons
 
 ## 3.3 Fit BT model and compare the prediction accuracy with spread line
 
-Based on our findings with the Spearman correlation, we separate the dataset by season, train the Bradley-Terry model on each season from 2006 through 2018, and then test the fitted model using the next season's data. As shown in Figure 2, the Bradley-Terry model has an average prediction accuracy of about 0.59, or 59%. While this is certainly better than a random guess, it performs worse than what the spread line would predict with an average accuracy of 0.67 or 67%.
+Based on our findings with the Spearman correlation, we separated the dataset by season, trained the Bradley-Terry model on each season from 2006 through 2018, and then tested the fitted model using the next season's data. As shown in Figure 2, the Bradley-Terry model has an average prediction accuracy of about 0.59, or 59%. While this is certainly better than a random guess, it performs worse than what the spread line would predict with an average accuracy of 0.67 or 67%.
 
 ``` r
 season = (min(dat$season)+1):max(dat$season)
@@ -301,7 +292,7 @@ After exploring the data with a simple version of the Bradley-Terry model, we ha
 
   - Formulate the Bradley-Terry model in a way that can adjust for ties. While these ties are not particularly common, it is a way to improve the quality of the forecast.
   - Train the model in an online fashion, instead of using large batches. 
-  - Take more explanatory variables into account and see if there are areas in which the B-T model does better than the betting odds do.
+  - Take more explanatory variables into account to see if there are areas where the B-T model produces better predictions than do the betting odds.
   - Extend the model to account for the temporal dynamics so that we can train with all the historical data.
 
 # 5 References
