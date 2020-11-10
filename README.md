@@ -10,7 +10,9 @@ Elina Choi, Shan Lu, and Steven Moen
 
 # 1 Summary
 
-TEST
+Gridiron football is an integral part of American culture and life, yet the game has proven challenging to understand and predict for a variety of reasons. As statisticians, we seek to better understand this game and see if we can make more informed predictions about the outcomes using techniques that we have learned in STAT 992, taught at UW-Madison by Professor Karl Rohe in the Fall of 2020.
+
+We first looked at NFL data from the 2006 through 2019 regular seasons and show that the Spearman correlations decay quickly between seasons. Thus, we decidede to only use one season of training data to fit the Bradley-Terry model, which is a standard model for predicting wins or losses for teams in a tournament-style setting. Our results are mixed in that while the predictions are better than mere chance, they are worse than those predictions implied by the spread line seen in sports books. However, the only covariate we included for this initial pass was whether the teams were played by the home or the away team, and as such, adding additional covariates as well as finding ways to incorporate more recent data may improve our prediction quality.
 
 # 2 Introduction
 
