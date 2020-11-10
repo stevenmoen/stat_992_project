@@ -10,10 +10,6 @@ Elina Choi, Shan Lu, and Steven Moen
 
 # 1 Summary
 
-\[ADD A SUMAMRY\]
-
-Our results show X, Y, Z. We aim to work more in this area.
-
 # 2 Introduction
 
 It might be fair to call gridiron football, sometimes called “American”
@@ -83,14 +79,12 @@ Baseball (MLB). There are four reasons that make this the case.
   - Third, one might then look to the microfoundations of the NFL game,
     but the problem there is that the probabilities needed to understand
     the game are highly conditional and therefore intractable compared
-    to other sports
-    (<span class="citeproc-not-found" data-reference-id="Feng2020">**???**</span>),
-    especially at the level of the individual player. For example,
-    evaluating quarterbacks Deshaun Watson against Patrick Mahomes
-    requires a lot of simplifying assumptions since they play very
-    different styles of football under different head coaches with a
-    different supporting cast of skill position players and offensive
-    linemen.
+    to other sports (Feng 2020), especially at the level of the
+    individual player. For example, evaluating quarterbacks Deshaun
+    Watson against Patrick Mahomes requires a lot of simplifying
+    assumptions since they play very different styles of football under
+    different head coaches with a different supporting cast of skill
+    position players and offensive linemen.
 
   - Fourth, there is also the problem of prior year data. To borrow
     Vilfredo Pareto’s phrase (Pareto 1961), there is a lot of
@@ -111,16 +105,22 @@ the Bradley-Terry model.
 
 The Bradley-Terry model (Bradley and Terry 1952) is a probabilistic
 model for pairwise comparison. The probability of event “team i beats
-team j” is formulated as \[
-\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)),
-\] where \(\lambda_i=\beta_{i0}+\sum_{r}x_{ir}\beta_{r}\) and
-\(\lambda_j=\beta_{j0}+\sum_{r}x_{jr}\beta_{r}\).
+team j” is formulated as
 
-The parameter \(\beta_{i0}\) quantifies the ability of team \(i\). If
-\(\beta_{i0}> \beta_{j0}\), then team \(i\) has higher chances of
-beating team \(j\). \(\{x_{ir}\}_{r}\) are team specific variables that
-may influence game results. For example, if we set
-\(x_{i1}=1_{\{\text{team }i \text{ is at home}\}}\), then \(\beta_{1}\)
+![equation](https://latex.codecogs.com/gif.latex?%5C%7Bi%20%5Ctext%7B%20beats%20%7D%20j%5C%7D%20%5Csim%20%5Ctext%7B%20Bernoulli%7D%28%5Ctexttt%7Blogit%7D%5E%7B-1%7D%28%5Clambda_i-%5Clambda_j%29%29%2C)
+
+![equation](https://latex.codecogs.com/gif.latex?%5Ctext%7Bwhere%20%7D%5Clambda_i%3D%5Cbeta_%7Bi0%7D+%5Csum_%7Br%7Dx_%7Bir%7D%5Cbeta_%7Br%7D%20%5Ctext%7B%20and%20%7D%5Clambda_j%3D%5Cbeta_%7Bj0%7D+%5Csum_%7Br%7Dx_%7Bjr%7D%5Cbeta_%7Br%7D.)
+
+The parameter
+![equation](https://latex.codecogs.com/gif.latex?%5Cbeta_%7Bi0%7D)
+quantifies the ability of team *i*. If
+![equation](https://latex.codecogs.com/gif.latex?%5Cbeta_%7Bi0%7D%3E%20%5Cbeta_%7Bj0%7D),
+then team *i* has higher chances of beating team *j*.
+![equation](https://latex.codecogs.com/gif.latex?%5C%7Bx_%7Bir%7D%5C%7D_%7Br%7D)
+are team specific variables that may influence game results. For
+example, if we set
+![equation](https://latex.codecogs.com/gif.latex?x_%7Bi1%7D%3D1_%7B%5C%7B%5Ctext%7Bteam%20%7Di%20%5Ctext%7B%20is%20at%20home%7D%5C%7D%7D),
+then ![equation](https://latex.codecogs.com/gif.latex?%5Cbeta_%7B1%7D)
 expresses home team advantage. The model is estimated through maximum
 likelihood, and is implemented with R package
 [BradleyTerry2](https://github.com/hturner/BradleyTerry2).
@@ -243,7 +243,7 @@ ggheatmap +
 
 <div class="figure" style="text-align: center">
 
-<img src="BT_Steven_Edits_files/figure-gfm/unnamed-chunk-2-1.png" alt="Figure 1: Spearman correlation of the team Bradley-Terry score between each pair of seasons"  />
+<img src="stat992_modeling_NFL_files/figure-gfm/unnamed-chunk-2-1.png" alt="Figure 1: Spearman correlation of the team Bradley-Terry score between each pair of seasons"  />
 
 <p class="caption">
 
@@ -296,7 +296,7 @@ ggplot(test_acc_long, aes(x=season, y=accuracy, color=method)) + theme_bw()+
 
 <div class="figure" style="text-align: center">
 
-<img src="BT_Steven_Edits_files/figure-gfm/unnamed-chunk-3-1.png" alt="Figure 2: Classification accuracy for Bradley-Terry model and spread line"  />
+<img src="stat992_modeling_NFL_files/figure-gfm/unnamed-chunk-3-1.png" alt="Figure 2: Classification accuracy for Bradley-Terry model and spread line"  />
 
 <p class="caption">
 
@@ -343,6 +343,13 @@ Clay, Mike. 2012. “Defining ’Garbage Time’ | PFF News & Analysis | PFF.”
 DeArdo, Bryan. 2020. “Is the Super Bowl hangover real? How past losers
 have fared next season, what it means for the 49ers - CBSSports.com.”
 <https://www.cbssports.com/nfl/news/is-the-super-bowl-hangover-real-how-past-losers-have-fared-next-season-what-it-means-for-the-49ers/>.
+
+</div>
+
+<div id="ref-Feng2020">
+
+Feng, Ed. 2020. “The football analytics resource guide – the top 9
+killer articles.” <https://thepowerrank.com/top-analytics-articles/>.
 
 </div>
 
