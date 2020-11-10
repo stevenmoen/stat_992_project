@@ -418,7 +418,9 @@ summary {
 <p>One might look at these grim realities and give up - how is it possible to understand America’s game? There is hope, and it comes in the form of the Bradley-Terry model.</p>
 <div id="bradley-terry-model" class="section level2" number="2.1">
 <h2 number="2.1"><span class="header-section-number">2.1</span> Bradley-Terry Model</h2>
-<p>The Bradley-Terry model <span class="citation">(Bradley and Terry 1952)</span> is a probabilistic model for pairwise comparison. The probability of event “team i beats team j” is formulated as <span class="math display">\[\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)), \]</span> where <span class="math inline">\(\lambda_i=\beta_{i0}+\sum_{r}x_{ir}\beta_{r}\)</span> and <span class="math inline">\(\lambda_j=\beta_{j0}+\sum_{r}x_{jr}\beta_{r}\)</span>.</p>
+<p>The Bradley-Terry model <span class="citation">(Bradley and Terry 1952)</span> is a probabilistic model for pairwise comparison. The probability of event “team i beats team j” is formulated as <span class="math display">\[
+\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)),
+\]</span> where <span class="math inline">\(\lambda_i=\beta_{i0}+\sum_{r}x_{ir}\beta_{r}\)</span> and <span class="math inline">\(\lambda_j=\beta_{j0}+\sum_{r}x_{jr}\beta_{r}\)</span>.</p>
 <p>The parameter <span class="math inline">\(\beta_{i0}\)</span> quantifies the ability of team <span class="math inline">\(i\)</span>. If <span class="math inline">\(\beta_{i0}&gt; \beta_{j0}\)</span>, then team <span class="math inline">\(i\)</span> has higher chances of beating team <span class="math inline">\(j\)</span>. <span class="math inline">\(\{x_{ir}\}_{r}\)</span> are team specific variables that may influence game results. For example, if we set <span class="math inline">\(x_{i1}=1_{\{\text{team }i \text{ is at home}\}}\)</span>, then <span class="math inline">\(\beta_{1}\)</span> expresses home team advantage. The model is estimated through maximum likelihood, and is implemented with R package <a href="https://github.com/hturner/BradleyTerry2">BradleyTerry2</a>.</p>
 </div>
 </div>
@@ -438,12 +440,7 @@ dat &lt;- dat[dat$result!=0,]
 dat$home_team[dat$home_team==&quot;LA&quot;]=&quot;STL&quot;
 dat$away_team[dat$away_team==&quot;LA&quot;]=&quot;STL&quot;
 dat$home_team[dat$home_team==&quot;LAC&quot;]=&quot;SD&quot;
-dat$away_team[dat$away_team==&quot;LAC&quot;]=&quot;SD&quot;
-## number of games per season
-print(table(dat$season))</code></pre>
-<pre><code>## 
-## 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 
-##  256  256  255  256  256  256  255  255  255  256  254  256  254  255</code></pre>
+dat$away_team[dat$away_team==&quot;LAC&quot;]=&quot;SD&quot;</code></pre>
 </div>
 <div id="check-temporal-correlation" class="section level2" number="3.2">
 <h2 number="3.2"><span class="header-section-number">3.2</span> Check temporal correlation</h2>

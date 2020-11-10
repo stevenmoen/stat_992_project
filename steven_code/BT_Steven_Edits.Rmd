@@ -47,7 +47,9 @@ One might look at these grim realities and give up - how is it possible to under
 
 
 The Bradley-Terry model [@bradley1952rank] is a probabilistic model for pairwise comparison. The probability of event "team i beats team j" is formulated as 
-\[\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)), \]
+\[
+\{i \text{ beats } j\} \sim \text{ Bernoulli}(\texttt{logit}^{-1}(\lambda_i-\lambda_j)),
+\]
 where $\lambda_i=\beta_{i0}+\sum_{r}x_{ir}\beta_{r}$ and $\lambda_j=\beta_{j0}+\sum_{r}x_{jr}\beta_{r}$. 
 
 The parameter $\beta_{i0}$ quantifies the ability of team $i$.  If  $\beta_{i0}> \beta_{j0}$, then team $i$ has higher chances of beating team $j$. $\{x_{ir}\}_{r}$ are team specific  variables that may influence game results. For example, if we set $x_{i1}=1_{\{\text{team }i \text{ is at home}\}}$, then $\beta_{1}$ expresses home team advantage. The model is estimated through maximum likelihood, and is implemented with R package [BradleyTerry2](https://github.com/hturner/BradleyTerry2).
@@ -71,8 +73,6 @@ dat$home_team[dat$home_team=="LA"]="STL"
 dat$away_team[dat$away_team=="LA"]="STL"
 dat$home_team[dat$home_team=="LAC"]="SD"
 dat$away_team[dat$away_team=="LAC"]="SD"
-## number of games per season
-print(table(dat$season))
 ```
 
 ## Check temporal correlation
