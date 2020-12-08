@@ -126,7 +126,13 @@ for (i in season){
                             prediction = as.vector(test_design%*%param>0),
                             # Tack on the original spread and the log odd predictions
                             spread=(dat_test$spread_line>0), spread_orig = dat_test$spread_line,
+                            # home_team = dat_test$home_team,
                             mod_log_odds = as.vector(test_design%*%param)))
+                            # mod_log_odds = as.vector(test_design%*%param),
+                            # Bolt on more covariates
+                            # roof = dat_test$roof, surface = dat_test$surface))
+                            # div_game = dat_test$div_game, home_team = dat_test$home_team))
+                            # Bolt on the team
     # temp = data.frame(cbind(season=i, week=j,
                             # result= (dat_test$result>0),
                             # prediction = as.vector(test_design%*%param>0),
@@ -134,6 +140,8 @@ for (i in season){
     if (i==season[1]&j==1){store_result=temp}else{store_result=rbind(store_result, temp)}
   }
 }
+
+head(dat_test)
 
 # test_design%*%param
 # store_result
@@ -210,8 +218,15 @@ sum(is.na(store_result$sl_prob))
 # or, the implied odds from the spreadline versus the model probabilities
 store_result$emt_pred = store_result$sl_prob - store_result$mod_prob
 
+# par(mfrow=c(1,1))
+
 # Visualize the data
-hist(store_result$emt_pred, breaks = 20)
+hist(store_result$emt_pred, breaks = 20, xlab = "Vegas Prob. - Model Prob.")
+
+# Sanity check
+ggplot() + geom_histogram(aes(x=emt_pred), colour="red", data=store_result) 
+# geom_density(aes(x=sl_prob), colour="blue", data=store_result)
+
 
 # Summarize the data
 summary(store_result$emt_pred)
@@ -223,8 +238,207 @@ summary(store_result$emt_pred)
 
 # head(dat)
 
-### The Kelly Criterion ###
+### Visualization
 
+head(store_result)
+p <- ggplot(data = store_result, aes(x = emt_pred)) + geom_histogram(binwidth = 0.05)
+p + facet_wrap(~season)
+
+head(store_result)
+
+## What if we could plot both?
+ggplot(store_result, aes(x=c)) + geom_density(aes(group=sl_prob))
+# data_melt = melt(store_result)
+# ?melt
+# data_melt
+
+ggplot() + geom_histogram(aes(x=emt_pred), colour="red", data=store_result) 
+  # geom_density(aes(x=sl_prob), colour="blue", data=store_result)
+
+
+# This is the one we want - 
+p1 <- ggplot() + 
+  geom_density(aes(x=mod_prob), colour="red", data=store_result) + 
+  geom_density(aes(x=sl_prob), colour="blue", data=store_result)
+# + scale_x_continuous("Test")
+  # +labs(title="Win Probability",
+  #     x ="Predicted Win Probability")
+
+
+# Mess with the subtitle
+special_sub = expression(paste("Our Model in Red, ", "Sports Book Odds in Blue"))
+# special_sub = multiTitle(color="red","Hair color", color="black"," and ",color="blue","Eye color")
+
+# abc = expression("Hair color" * phantom(" and Eye color"),col.main="red")
+
+
+# title(expression(phantom("Hair color and ") *
+#                    "Eye color"),col.main="blue")
+# 
+# title(expression(phantom("Hair color ") *
+#                    
+#                    "and " * phantom("Eye color"),col.main="black")) 
+
+p2 <- p1 + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities", subtitle = special_sub)
+# p2
+
+# p2 <- p1 + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities", subtitle = "Red is Our Model, Blue is Vegas")
+
+# Mess with the subtitle
+
+# p2 +  theme(
+#   plot.title = element_text(color = "red", size = 12, face = "bold"),
+#   plot.subtitle = element_text(color = "blue"),
+#   plot.caption = element_text(color = "green", face = "italic")
+# )
+
+# By Season
+season <- ggplot() + geom_density(aes(x=mod_prob), colour="red", data=store_result) + 
+  geom_density(aes(x=sl_prob), colour="blue", data=store_result) + facet_wrap(~season)
+
+season + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities by Season", subtitle = special_sub)
+
+# By week
+week <- ggplot() + geom_density(aes(x=mod_prob), colour="red", data=store_result) + 
+  geom_density(aes(x=sl_prob), colour="blue", data=store_result) + facet_wrap(~week)
+
+week + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities by Week", subtitle = special_sub)
+
+# Bolt on team
+
+
+# p <- ggplot(data=store_result, aes(x=emt_pred, group=cut, fill=cut)) +
+  # geom_density(adjust=1.5, alpha=.4) +
+  # theme_ipsum()
+
+### The Kelly Criterion ###
+head(store_result)
+
+store_result$mod_prob
+# Calculate spread line odds
+store_result$sl_odds = (store_result$sl_prob)/(1- store_result$sl_prob)
+
+# Calculate b assuming a fair casino
+# store_result$kb = (1/(store_result$sl_prob))-1
+store_result$kb = 1/store_result$sl_odds
+
+store_result$sl_odds
+
+
+# Find out the Kelly bet
+store_result$kelly_bet = store_result$mod_prob - ((1-store_result$mod_prob)/store_result$kb)
+
+# Code up a negative dummy
+store_result$kelly_result = ifelse(store_result$result == 0, -1, 1)
+
+head(store_result)
+# Find out the total payoff
+store_result$kb_payoff = ifelse(store_result$kelly_result*store_result$kelly_bet > 0, 
+                                abs(store_result$kelly_bet) + 1, 1 - abs(store_result$kelly_bet))
+
+
+# head(store_result)
+# Write a function
+kb_func_rand = function(bankroll, df=store_result, niter= 100, samp_no = 100){
+  # Initialize a storage matrix
+  br_mat = matrix(0, samp_no, niter)
+  # Loop through and populate
+  for (j in 1:niter){
+    # Take a sample
+    t_samp = df[sample(nrow(df), samp_no), ]
+    # Re-order the data frame
+    t_samp$index <- as.numeric(row.names(t_samp))
+    t_samp = t_samp[order(t_samp$index), ]
+    # Initialize a storage vector
+    # br_vec = rep(0, nrow(df))
+    # Loop through
+    for (i in 1:nrow(t_samp)){
+      # If we have one, then we just simply extract the first value
+      if (i ==1){
+        br_mat[i,j] = t_samp$kb_payoff[i]*bankroll
+        # If you're at 0, then you're at zero
+        br_mat[i,j] = ifelse(br_mat[i,j] <0 ,0 , br_mat[i,j])
+      } else {
+        # Calculate the new payoff
+        br_mat[i,j] = t_samp$kb_payoff[i]*br_mat[i-1,j]
+        # If you're at 0, then you're at zero
+        br_mat[i,j] = ifelse(br_mat[i,j] <0 ,0 , br_mat[i,j])
+      }
+      # print(br_vec)
+    }
+    # Add one to everyone to avoid problems with log scale
+    br_mat = br_mat + 1 
+    # Plot on the log scale
+    if (j ==1){
+      # Now we need to plot the data
+      plot(log(br_mat[,j]), type = "l", xlab = "Number of Bets Placed",
+      ylab = "Log Dollars", ylim = c(0,10),
+      main = paste("Kelly Criterion Betting Results Over", niter, "Simulations"),
+      sub = "$1 was Added to the Original Matrix of Dollars for Stability")
+      # Add a horizonal line
+      abline(h = log(100+1), col = "red", lty = 2)
+      legend("topright", legend = c(paste0("Starting Bankroll of $",bankroll)), col = "red", lty = 2)
+      # plot(br_mat[,j], type = "l", xlab = "Number of Bets Placed",
+           # ylab = "Dollars", ylim = c(0,1000))
+    } else {
+      # lines(br_mat[,j])
+      lines(log(br_mat[,j]))
+    }
+    
+    # Add lines
+    # lines(br_mat[,j])
+  }
+  # Plot the matrix
+  # plot(br)
+  # Add lines
+  # Plot the data
+  # plot(br_vec, type = "l", xlab = "Number of "
+  return(br_mat)
+}
+
+def = kb_func_rand(100)
+def
+
+# Append an index
+
+# t_samp = sample(store_result, size = 10)
+t_samp = store_result[sample(nrow(store_result), 5), ]
+
+t_samp$index <- as.numeric(row.names(t_samp))
+t_samp <- t_samp[order(t_samp$index), ]
+
+t_samp$kb_payoff[1]
+
+# sample(nrow(store_result), 3)
+index(store_result)
+order(t_samp)
+# kb_func = function(bankroll, df=store_result){
+#   # Print the data frame
+#   # print(df)
+#   # Initialize a storage vector
+#   br_vec = rep(0, nrow(df))
+#   # Loop through
+#   for (i in 1:nrow(df)){
+#     # If we have one, then we just simply extract the first value
+#     if (i ==1){
+#       br_vec[i] = df$kb_payoff[i]*bankroll
+#     } else {
+#       # Calculate the new payoff
+#       br_vec[i] = df$kb_payoff[i]*br_vec[i-1]
+#       # If you're at 0, then you're at zero
+#       br_vec[i] = ifelse(br_vec[i] <0 ,0 , br_vec[i])
+#     }
+#     # print(br_vec)
+#   }
+#   # Plot the data
+#   # plot(br_vec, type = "l", xlab = "Number of "
+#   return(br_vec)
+# }
+
+store_result$kb_payoff[1]
+
+abc = kb_func(100, df=store_result[1:100,])
+plot(abc)
 
 
 ######################################################### Bradley Terry ####################################################################
