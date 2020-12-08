@@ -114,6 +114,7 @@ for (i in min(dat$season): max(dat$season)){
 }
 
 
+
 BT_score = BT_score[complete.cases(BT_score),]
 cormat = cor(BT_score, method='spearman')
 diag(cormat)=NA
@@ -204,3 +205,104 @@ After exploring the data with a simple version of the Bradley-Terry model, we ha
 * Extend the model to account for temporal dynamic, so that we can train with all the historical data.
 
 # References
+
+# Steven's Problem Solving
+
+```{r}
+data(baseball) # start with baseball data as provided by package
+
+##  Simple Bradley-Terry model, ignoring home advantage:
+baseballModel1 <- BTm(cbind(home.wins, away.wins), home.team, away.team,
+                      data = baseball, id = "team")
+
+home.wins
+
+##  Now incorporate the "home advantage" effect
+baseball$home.team <- data.frame(team = baseball$home.team, at.home = 1)
+baseball$away.team <- data.frame(team = baseball$away.team, at.home = 0)
+baseballModel2 <- update(baseballModel1, formula = ~ team + at.home)
+
+##  Compare the fit of these two models:
+anova(baseballModel1, baseballModel2)
+```
+
+```{r,fig.cap = "Figure 1: Spearman correlation of the team Bradley-Terry score between each pair of seasons", fig.align='center'}
+### fit BT by season ###
+# BT_score is a matrix storing BT scores for all seasons
+
+BT_score = matrix(NA, nrow = length(unique(dat$home_team)), ncol=length(unique(dat$season)))
+# Sort the team names
+rownames(BT_score)=sort(unique(dat$home_team))
+# Organize the seasons
+colnames(BT_score)=paste0('season',min(dat$season): max(dat$season))
+
+
+# team ARI is used as control
+BT_score['ARI',] = 0
+
+# Loop through for all seasons in the data frame
+for (i in min(dat$season): max(dat$season)){
+  # Subset the data frame for only one season
+  dat_season=dat[dat$season==i,]
+  # Count a home team win if result is equal to 0
+  home.wins = (dat_season$result>0)*1
+  # print(home.wins)
+  # Assign variables in a different way
+  football = cbind(home.team=data.frame(team = dat_season$home_team, at.home = 1),
+                  away.team=data.frame(team = dat_season$away_team, at.home = 0))
+  football
+  # Create a list of inputs for the model to run
+  # football = list(home.team=data.frame(team = dat_season$home_team, at.home = 1),
+                  # away.team=data.frame(team = dat_season$away_team, at.home = 0))
+  # print(football)
+  # Try running the model
+  mod1 = BTm(outcome = home.wins, player1 = home.team, player2 = away.team,
+             formula = ~ team + at.home, id = "team",data = football, family =binomial(link = "logit"))
+  # Extract the model coefficients
+  coef=mod1$coefficients[1:(length(mod1$coefficients)-1)]
+  # Stores the coefficients in a list
+  BT_score[unlist(lapply(names(coef),function(i){substr(i, 5, nchar(i))})),i-min(dat$season)+1]=coef
+}
+
+
+
+BT_score = BT_score[complete.cases(BT_score),]
+cormat = cor(BT_score, method='spearman')
+diag(cormat)=NA
+
+# Reorder the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Spearman\nCorrelation") +
+  theme_minimal()+ # minimal theme
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 8, hjust = 1),
+        axis.text.y = element_text(size = 8))+
+  coord_fixed()
+
+ggheatmap + 
+  geom_text(aes(Var2, Var1, label = round(value,2)), color = "black", size = 2) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(0.6, 0.7),
+    legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                               title.position = "top", title.hjust = 0.5))
+```
+
