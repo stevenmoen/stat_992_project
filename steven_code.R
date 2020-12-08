@@ -280,7 +280,9 @@ special_sub = expression(paste("Our Model in Red, ", "Sports Book Odds in Blue")
 #                    "and " * phantom("Eye color"),col.main="black")) 
 
 p2 <- p1 + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities", subtitle = special_sub)
-# p2
+
+# Overall win probabilities
+p2
 
 # p2 <- p1 + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities", subtitle = "Red is Our Model, Blue is Vegas")
 
@@ -295,7 +297,7 @@ p2 <- p1 + scale_x_continuous("Win Probability") + scale_y_continuous("Density")
 # By Season
 season <- ggplot() + geom_density(aes(x=mod_prob), colour="red", data=store_result) + 
   geom_density(aes(x=sl_prob), colour="blue", data=store_result) + facet_wrap(~season)
-
+# season
 season + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + ggtitle("Comparing Win Probabilities by Season", subtitle = special_sub)
 
 # By week
@@ -314,7 +316,7 @@ week + scale_x_continuous("Win Probability") + scale_y_continuous("Density")  + 
 ### The Kelly Criterion ###
 head(store_result)
 
-store_result$mod_prob
+# store_result$mod_prob
 # Calculate spread line odds
 store_result$sl_odds = (store_result$sl_prob)/(1- store_result$sl_prob)
 
@@ -322,7 +324,7 @@ store_result$sl_odds = (store_result$sl_prob)/(1- store_result$sl_prob)
 # store_result$kb = (1/(store_result$sl_prob))-1
 store_result$kb = 1/store_result$sl_odds
 
-store_result$sl_odds
+# store_result$sl_odds
 
 
 # Find out the Kelly bet
@@ -331,13 +333,13 @@ store_result$kelly_bet = store_result$mod_prob - ((1-store_result$mod_prob)/stor
 # Code up a negative dummy
 store_result$kelly_result = ifelse(store_result$result == 0, -1, 1)
 
-head(store_result)
+# head(store_result)
 # Find out the total payoff
 store_result$kb_payoff = ifelse(store_result$kelly_result*store_result$kelly_bet > 0, 
                                 abs(store_result$kelly_bet) + 1, 1 - abs(store_result$kelly_bet))
 
 
-# head(store_result)
+head(store_result)
 # Write a function
 kb_func_rand = function(bankroll, df=store_result, niter= 100, samp_no = 100){
   # Initialize a storage matrix
@@ -349,6 +351,7 @@ kb_func_rand = function(bankroll, df=store_result, niter= 100, samp_no = 100){
     # Re-order the data frame
     t_samp$index <- as.numeric(row.names(t_samp))
     t_samp = t_samp[order(t_samp$index), ]
+    # print(t_samp)
     # Initialize a storage vector
     # br_vec = rep(0, nrow(df))
     # Loop through
@@ -397,7 +400,7 @@ kb_func_rand = function(bankroll, df=store_result, niter= 100, samp_no = 100){
 }
 
 def = kb_func_rand(100)
-def
+# def
 
 # Append an index
 
