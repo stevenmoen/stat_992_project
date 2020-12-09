@@ -246,6 +246,8 @@ p + facet_wrap(~season)
 
 head(store_result)
 
+# sum(store_result$result)/nrow(store_result)
+
 ## What if we could plot both?
 ggplot(store_result, aes(x=c)) + geom_density(aes(group=sl_prob))
 # data_melt = melt(store_result)
@@ -339,6 +341,7 @@ store_result$kb_payoff = ifelse(store_result$kelly_result*store_result$kelly_bet
                                 abs(store_result$kelly_bet) + 1, 1 - abs(store_result$kelly_bet))
 
 
+summary(store_result$kelly_bet)
 head(store_result)
 # Write a function
 kb_func_rand = function(bankroll, df=store_result, niter= 100, samp_no = 100){
