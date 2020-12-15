@@ -771,6 +771,7 @@ be_110 = (110/210)
 
 
 # head(store_result)
+test_acc_spread
 
 # Analyze the accuracy
 test_acc1 = data.frame(cbind(aggregate(cbind(store_result$result_test, store_result$result_spread), by = list(season=store_result$season),
@@ -787,7 +788,7 @@ ggplot(test_acc_long, aes(x=season, y=accuracy, color=method)) + theme_bw()+
   geom_hline(yintercept = be_110, linetype = "dashed", color = "green") + 
   ggtitle("Spread Win Probabilities by Season")
 
-# Summarize the data
+####### BIG SUMMARY #######
 colMeans(test_acc1)
 
 # colMeans(test_acc1)
