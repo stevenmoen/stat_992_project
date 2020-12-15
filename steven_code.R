@@ -489,9 +489,8 @@ dim(train_design)
 
 
 ##########################################################################################################################################
-##################################### Penalized Logistic regression - Train by week  ######################################################
+##################################### Penalized Logistic regression - Spreadline  ######################################################
 ##########################################################################################################################################
-
 # team
 
 # STM Notes on 12.12.2020 - Let's fit a model on spreadline
@@ -548,7 +547,13 @@ for (i in season){
     train_design =as.matrix(train_design[,-1])
     offset= train_design%*%param0[-1]+param0[1]
     #fit.lasso.cv <- cv.glmnet(train_design, cbind(1-y,y), type.measure="class", alpha=0, family="binomial", offset = offset)
-    fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda =.1, offset = offset)
+    opt_lambda <- cv.glmnet(train_design, y, family="gaussian", alpha=0, offset = offset)
+    # Print the optimal lambda
+    # print(opt_lambda)
+    # opt_lambda$lambda.min
+    fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda =opt_lambda$lambda.min, offset = offset)
+    # fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda =.1, offset = offset)
+    # fit.ridge.cv <- cv.glmnet(train_design, y, family="gaussian", alpha=0, offset = offset)
     # fit.lasso <- glmnet(train_design, cbind(1-y,y), family="binomial", alpha=0, lambda =.1, offset = offset)
     # param0 = c(fit.lasso$a0,as.vector(Matrix(fit.lasso$beta, sparse = F)))+param0
     param0 = c(fit.ridge$a0,as.vector(Matrix(fit.ridge$beta, sparse = F)))+param0
@@ -573,6 +578,14 @@ for (i in season){
   # Define cover the spread variables
   cts_train = ifelse(dat_train$result > dat_train$spread_line, 1, -1)
   cts_test = ifelse(dat_test$result > dat_test$spread_line, 1, -1)
+  # See what happens if we replace pushes with an NA
+  # cts_train = ifelse(dat_train$result == dat_train$spread_line, NA, -1)
+  # cts_test = ifelse(dat_test$result == dat_test$spread_line, NA, -1)
+  # See what happens if we replace pushes with an NA
+  cts_train[dat_train$result == dat_train$spread_line] <- NA
+  cts_test[dat_test$result == dat_test$spread_line] <- NA
+  # cts_train = ifelse(dat_train$result == dat_train$spread_line, NA)
+  # cts_test = ifelse(dat_test$result == dat_test$spread_line, NA)
   # cts_train = (dat_train$result - dat_train$spread_line >0)*1
   # cts_test = (dat_test$result - dat_test$spread_line >0)*1
   # Did we bet correctly on the training set?
@@ -580,16 +593,21 @@ for (i in season){
   # On the test set?
   result_test = ifelse(bet_cover_test*cts_test > 0, 1, 0)
   # What did the spread say?
-  result_spread = ifelse(cts_test > 0, 1, 0)
+  # Cut out NA rows
+  result_spread = ifelse(na.omit(cts_test) > 0, 1, 0)
+  # result_spread = ifelse(cts_test > 0, 1, 0)
   # The idea is that we would bet to cover the spread if we predict a higher
   test_acc_spread[i-min(season)+1,]=c(
+    # We want to eliminate ties from our dataset. You get your money back
     # This is whether we cover the spread in our test data
     # Did we bet correctly on our test set?
-    mean(result_test),
+    mean(result_test, na.rm = TRUE),
     # How did the spread line do?
-    mean(result_spread),
+    # mean(result_spread),
+    mean(result_spread, na.rm = TRUE),
     # Did we bet correctly on our training set?
-    mean(result_train)
+    # mean(result_train)
+    mean(result_train, na.rm = TRUE)
     
     
     # mean((pred >0)*1 == (dat_test$result>0)*1),
@@ -597,6 +615,8 @@ for (i in season){
     # mean((fit>0)*1 == (dat_train$result>0)*1)
   )
 }
+
+
 # reshape the test_acc to plot
 test_acc_long = gather(data.frame(test_acc, season=rownames(test_acc)), method, accuracy, "test":"train", factor_key=TRUE)
 test_acc_long$season = as.integer(unlist(lapply(test_acc_long$season, FUN=function(i){substr(i,8,11)})))
@@ -604,12 +624,27 @@ ggplot(test_acc_long, aes(x=season, y=accuracy, color=method)) + theme_bw()+
   geom_line()+theme(legend.title = element_blank())+ylab('Classification Accuracy')+xlab("Season")
 colMeans(test_acc)
 
+# Calculate the breakeven win percentage
+be_105 = (105/205)
+be_110 = (110/210)
+
+test_acc_spread
+
 # Plot the accuracy against the spread
 test_acc_long2 = gather(data.frame(test_acc_spread, season=rownames(test_acc_spread)), method, accuracy, "test":"train", factor_key=TRUE)
 test_acc_long2$season = as.integer(unlist(lapply(test_acc_long2$season, FUN=function(i){substr(i,8,11)})))
 ggplot(test_acc_long2, aes(x=season, y=accuracy, color=method)) + theme_bw()+
-  geom_line()+theme(legend.title = element_blank())+ylab('Spread Betting Accuracy')+xlab("Season")
-colMeans(test_acc)
+  geom_line()+theme(legend.title = element_blank())+ylab('Spread Betting Accuracy')+xlab("Season") +
+  geom_hline(yintercept = be_105, linetype = "dashed", color = "red") +
+  annotate(geom="text", label="-105 Breakeven Point", x=2010, y=be_105, vjust=-1, col = "red") + 
+  annotate(geom="text", label="-110 Breakeven Point", x=2010, y=be_110, vjust=-1, col = "green") + 
+  # geom_text(data=data.frame(x=2010,y=be_105), aes(x, y), label="Hello", vjust=-1) + 
+  # geom_text(aes(2010,be_105,label = "-105 Line Breakeven", vjust = -1, color = "red")) +
+  geom_hline(yintercept = be_110, linetype = "dashed", color = "green")
+  
+
+# Calculate the column means
+# colMeans(test_acc_spread)
 
 # store_params
 # season
@@ -646,11 +681,13 @@ for (i in season){
       offset= train_design%*%param0[-1]+param0[1]
       # param0
       # train_design
+      opt_lambda <- cv.glmnet(train_design, y, family="gaussian", alpha=0, offset = offset)
       #fit.lasso.cv <- cv.glmnet(train_design, cbind(1-y,y), type.measure="class", alpha=0, family="binomial", offset = offset)
       # Fit the lasso model
       fit.lasso <- glmnet(train_design, y, family="gaussian", alpha=1, lambda = .1, offset = offset)
       # Fit the ridge model
-      fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda = .1, offset = offset)
+      fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda = opt_lambda$lambda.min, offset = offset)
+      # fit.ridge <- glmnet(train_design, y, family="gaussian", alpha=0, lambda = .1, offset = offset)
       # print(fit.lasso$beta)
       # print(fit.ridge$beta)
       # fit.lasso <- glmnet(train_design, cbind(1-y,y), family="binomial", alpha=0, lambda = .1, offset = offset)
@@ -681,21 +718,23 @@ for (i in season){
   }
 }
 
+
+
 # Bolt on accuracy variables
-head(store_result)
+# head(store_result)
 
 # Measure the testing accuracy against the spread
 # Define a variable that's the decision criterion - let's call it "bet_cover"
 # Do it for both train and test
 store_result$bet_cover_test = ifelse(store_result$prediction > store_result$spread_line, 1, -1)
-# store_result$bet_cover_test = ifelse(pred > dat_test$spread_line, 1, -1)
 # Define cover the spread variables
-# store_result$cts_train = ifelse(store_result$result > store_result$spread_line, 1, -1)
 store_result$cts_test = ifelse(store_result$result > store_result$spread_line, 1, -1)
-# cts_train = (dat_train$result - dat_train$spread_line >0)*1
-# cts_test = (dat_test$result - dat_test$spread_line >0)*1
-# Did we bet correctly on the training set?
-# result_train = ifelse(bet_cover_train*cts_train > 0, 1, 0)
+# Let's see what happens if we add in NAs
+store_result$cts_test[store_result$result == store_result$spread_line] <- NA
+
+# Remove rows with the na
+store_result = store_result[complete.cases(store_result),]
+
 # On the test set?
 store_result$result_test = ifelse(store_result$bet_cover_test*store_result$cts_test > 0, 1, 0)
 # What did the spread say?
@@ -715,20 +754,43 @@ store_result$result_spread = ifelse(store_result$cts_test > 0, 1, 0)
 #   # mean((dat_test$spread_line>0)*1 == (dat_test$result>0)*1),
 #   # mean((fit>0)*1 == (dat_train$result>0)*1)
 # )
+head(store_result)
+# Modify to deal with NAs
+# cts_train[dat_train$result == dat_train$spread_line] <- NA
+# cts_test[dat_test$result == dat_test$spread_line] <- NA
 
 # test_acc1
 
-store_result$result_test
+# store_result$result_test
 # test_acc
+
+# Calculate the breakeven win percentage
+be_105 = (105/205)
+be_110 = (110/210)
+
+
+
+# head(store_result)
 
 # Analyze the accuracy
 test_acc1 = data.frame(cbind(aggregate(cbind(store_result$result_test, store_result$result_spread), by = list(season=store_result$season),
                                        FUN=mean), test_acc_spread[,1]))
-names(test_acc1)=c('season', 'prediction.by.week', 'spread','prediction.by.season')
-test_acc_long = gather(test_acc1, method, accuracy, "prediction.by.week":"prediction.by.season", factor_key=TRUE)
+names(test_acc1)=c('season', 'Prediction by Week', 'Home Team to Cover','Prediction by Season')
+test_acc_long = gather(test_acc1, method, accuracy, "Prediction by Week":"Prediction by Season", factor_key=TRUE)
+# This is the final accuracy bit
 ggplot(test_acc_long, aes(x=season, y=accuracy, color=method)) + theme_bw()+
-  geom_line()+theme(legend.title = element_blank())+ylab('Classification Accuracy')+xlab("Season")
+  geom_line()+theme(legend.title = element_blank())+ylab('Spread Betting Accuracy')+xlab("Season") +
+# Bolt on the breakeven points
+  geom_hline(yintercept = be_105, linetype = "dashed", color = "red") +
+  annotate(geom="text", label="-105 Breakeven Point", x=2011, y=be_105, vjust=-1, col = "red") + 
+  annotate(geom="text", label="-110 Breakeven Point", x=2011, y=be_110, vjust=-1, col = "green") + 
+  geom_hline(yintercept = be_110, linetype = "dashed", color = "green") + 
+  ggtitle("Spread Win Probabilities by Season")
+
+# Summarize the data
 colMeans(test_acc1)
+
+# colMeans(test_acc1)
 df= aggregate(cbind(store_result$result_test, store_result$result_spread),
               by = list(week=store_result$week, season=store_result$season),
               FUN=mean)
@@ -738,11 +800,18 @@ ggplot(df, aes(x=week, y=V1, color=as.factor(season)))+geom_point()
 df_week = aggregate(cbind(store_result$result_test, store_result$result_spread),
                     by = list(week=store_result$week),
                     FUN=mean)
-names(df_week)=c('season', 'prediction.by.week', 'spread')
+names(df_week)=c('season', 'Prediction by Week', 'Home Team to Cover')
 # Transform the data frame
-test_acc_week = gather(df_week, method, accuracy, "prediction.by.week":"spread", factor_key=TRUE)
+test_acc_week = gather(df_week, method, accuracy, "Prediction by Week":"Home Team to Cover", factor_key=TRUE)
 ggplot(test_acc_week, aes(x=season, y=accuracy, color=method)) + theme_bw()+
-  geom_line()+theme(legend.title = element_blank())+ylab('Classification Accuracy')+xlab("Season")
+  geom_line()+theme(legend.title = element_blank())+ylab('Spread Betting Accuracy')+xlab("Week") + 
+  # Bolt on the breakeven points
+  geom_hline(yintercept = be_105, linetype = "dashed", color = "red") +
+  annotate(geom="text", label="-105 Breakeven Point", x=5, y=be_105, vjust=-1, col = "red") + 
+  annotate(geom="text", label="-110 Breakeven Point", x=5, y=be_110, vjust=-1, col = "green") + 
+  geom_hline(yintercept = be_110, linetype = "dashed", color = "green")+
+  ggtitle("Spread Win Probabilities by Week")
+  
 
 # df_week
 
@@ -760,6 +829,8 @@ head(store_result)
 store_result$kb_fair = 1 
 store_result$kb_105 = 100/105
 store_result$kb_110 = 100/110
+
+105*(100/105) - 100*(105/100)
 
 # store_result$kb = (1/(store_result$sl_prob))-1
 # store_result$kb = 1/store_result$sl_odds
